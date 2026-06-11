@@ -28,7 +28,7 @@ export default function UploadZone({ folderId, onUploadDone }:Props) {
     for (let i=0; i<files.length; i++) {
       upd(i,{status:'uploading'});
       const fd = new FormData();
-      fd.append('files', files[i]);
+      fd.append('file', files[i]);
       if (folderId) fd.append('folder_id', folderId);
       try {
         const token = localStorage.getItem('token');
