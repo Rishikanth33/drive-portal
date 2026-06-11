@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 
 export const uploadFiles = async (
-  req: AuthRequest,
+  req: any,
   res: Response
 ) => {
 const files = req.files as any[];
@@ -29,7 +29,7 @@ const files = req.files as any[];
 };
 
 export const getFiles = async (
-  req: AuthRequest,
+  req: any,
   res: Response
 ) => {
   const { folder_id, search, sort } = req.query;
@@ -50,7 +50,7 @@ export const getFiles = async (
 };
 
 export const renameFile = async (
-  req: AuthRequest,
+  req: any,
   res: Response
 ) => {
   const { id } = req.params;
@@ -68,7 +68,7 @@ export const renameFile = async (
 };
 
 export const deleteFile = async (
-  req: AuthRequest,
+  req: any,
   res: Response
 ) => {
   const { id } = req.params;
@@ -86,7 +86,7 @@ export const deleteFile = async (
 };
 
 export const downloadFile = async (
-  req: AuthRequest,
+  req: any,
   res: Response
 ) => {
   const { id } = req.params;
@@ -102,7 +102,7 @@ export const downloadFile = async (
 };
 
 export const moveFile = async (
-  req: AuthRequest,
+  req: any,
   res: Response
 ) => {
   const { id } = req.params;

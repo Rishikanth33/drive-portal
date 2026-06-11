@@ -5,7 +5,7 @@ import { pool } from '../db';
 const router = Router();
 
 // ─── 1. GET ALL FOLDERS ───────────────────────────────
-router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/', authMiddleware, async (req: any, res: Response) => {
   try {
     const isAdmin = req.user!.role === 'admin';
     let sql = 'SELECT * FROM folders WHERE 1=1';
@@ -27,7 +27,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 });
 
 // ─── 2. CREATE FOLDER ────────────────────────────────
-router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/', authMiddleware, async (req: any, res: Response) => {
   try {
     const { name, parent_id } = req.body;
     if (!name) return res.status(400).json({ error: 'Folder name is required' });
@@ -47,7 +47,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 // ─── 3. RENAME FOLDER ────────────────────────────────
 router.patch('/:id', authMiddleware, async (req: Request &  AuthRequest, res: Response) => {
   try {
-    const { name } = req.body;
+    const name = req.body.name;
     if (!name) return res.status(400).json({ error: 'Name is required' });
 
     const { rows } = await pool   .query(
@@ -70,7 +70,7 @@ router.patch('/:id', authMiddleware, async (req: Request &  AuthRequest, res: Re
 });
 
 // ─── 4. DELETE FOLDER ────────────────────────────────
-router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.delete('/:id', authMiddleware, async (req: any, res: Response) => {
   try {
     const { rows } = await pool.query(
       'SELECT owner_id FROM folders WHERE id = $1',

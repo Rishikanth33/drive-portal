@@ -40,7 +40,7 @@ router.post('/', authMiddleware_1.authMiddleware, async (req, res) => {
 // ─── 3. RENAME FOLDER ────────────────────────────────
 router.patch('/:id', authMiddleware_1.authMiddleware, async (req, res) => {
     try {
-        const { name } = req.body;
+        const name = req.body.name;
         if (!name)
             return res.status(400).json({ error: 'Name is required' });
         const { rows } = await db_1.pool.query('SELECT owner_id FROM folders WHERE id = $1', [req.params.id]);
