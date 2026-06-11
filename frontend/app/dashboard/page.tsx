@@ -129,7 +129,10 @@ export default function Dashboard() {
       const [fr, dr] = await Promise.all([api.get('/files', { params: p }), api.get('/folders')]);
       setFiles(fr.data);
       setFolders(dr.data);
-    } catch { router.push('/login'); }
+    }catch (err) {
+  console.error(err);
+  setToast('Failed to load files');
+}
     finally { setLoading(false); }
   }, [user, currentFolder, search, sort, router, section]);
 
