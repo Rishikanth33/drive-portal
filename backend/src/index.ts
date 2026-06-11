@@ -16,39 +16,29 @@ const app = express();
 
 app.use(cors());
 
-app.use(express.json({
-  limit: '10mb',
-}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
-app.use(express.urlencoded({
-  extended: true,
-}));
-
-// ✅ FILE UPLOAD MIDDLEWARE
-app.use(fileUpload({
-  createParentPath: true,
-}));
-
-// ✅ STATIC UPLOADS
+// VERY IMPORTANT
 app.use(
-  '/uploads',
-  express.static(path.join(__dirname, '../uploads'))
+  fileUpload({
+    createParentPath: true,
+  })
 );
 
-// ✅ ROUTES
-app.use('/api/admin', adminRoutes);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/folders', folderRoutes);
+app.use('/api/admin', adminRoutes);
 
-// ✅ TEST PROTECTED ROUTE
 app.get('/api/protected', authMiddleware, (req, res) => {
   res.json({
     message: 'Protected route accessed successfully',
   });
 });
 
-// ✅ ROOT ROUTE
 app.get('/', (req, res) => {
   res.json({
     success: true,
