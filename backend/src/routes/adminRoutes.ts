@@ -6,7 +6,7 @@ import { pool } from '../db';
 const router = Router();
 
 // All routes below require admin role
-function adminOnly(req: Request & AuthRequest, res: Response, next: Function) {
+function adminOnly(req: AuthRequest, res: Response, next: Function) {
   if (req.user!.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -18,7 +18,7 @@ router.use(authMiddleware, adminOnly);
 // ... The rest of your route handlers stay exactly the same
 
 // ─── 1. GET ALL USERS WITH STATS ─────────────────────
-router.get('/users', async (req: Request & AuthRequest, res: Response) => {
+router.get('/users', async (req: AuthRequest, res: Response) => {
   try {
     const { rows: users } = await pool.query(
       `SELECT u.id, u.name, u.email, u.role, u.created_at,
@@ -37,7 +37,7 @@ router.get('/users', async (req: Request & AuthRequest, res: Response) => {
 });
 
 // ─── 2. GET SPECIFIC USER'S FILES ────────────────────
-router.get('/users/:id/files', async (req: Request & AuthRequest, res: Response) => {
+router.get('/users/:id/files', async (req: AuthRequest, res: Response) => {
   try {
     const { rows: userRows } = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [req.params.id]);
     if (userRows.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -55,7 +55,7 @@ router.get('/users/:id/files', async (req: Request & AuthRequest, res: Response)
 });
 
 // ─── 3. GET SPECIFIC USER'S FOLDERS ──────────────────
-router.get('/users/:id/folders', async (req: Request & AuthRequest, res: Response) => {
+router.get('/users/:id/folders', async (req: AuthRequest, res: Response) => {
   try {
     const { rows: userRows } = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [req.params.id]);
     if (userRows.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -73,7 +73,7 @@ router.get('/users/:id/folders', async (req: Request & AuthRequest, res: Respons
 });
 
 // ─── 4. CHANGE USER ROLE ─────────────────────────────
-router.patch('/users/:id/role', async (req: Request & AuthRequest, res: Response) => {
+router.patch('/users/:id/role', async (req: AuthRequest, res: Response) => {
   try {
     const { role } = req.body;
     if (!role || !['user', 'admin'].includes(role)) {
@@ -96,7 +96,7 @@ router.patch('/users/:id/role', async (req: Request & AuthRequest, res: Response
 });
 
 // ─── 5. EDIT USER INFO ──────────────────────────────
-router.patch('/users/:id', async (req: Request & AuthRequest, res: Response) => {
+router.patch('/users/:id', async (req: AuthRequest, res: Response) => {
   try {
     const { name, email } = req.body;
     const updates: string[] = [];
@@ -124,7 +124,7 @@ router.patch('/users/:id', async (req: Request & AuthRequest, res: Response) => 
 });
 
 // ─── 6. DELETE USER ─────────────────────────────────
-router.delete('/users/:id', async (req: Request & AuthRequest, res: Response) => {
+router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
   try {
     if (req.params.id === req.user!.id) {
       return res.status(400).json({ error: 'You cannot delete your own account' });
@@ -157,7 +157,7 @@ router.delete('/users/:id', async (req: Request & AuthRequest, res: Response) =>
 });
 
 // ─── 7. ADMIN DASHBOARD STATS ────────────────────────
-router.get('/stats', async (req: Request & AuthRequest, res: Response) => {
+router.get('/stats', async (req: AuthRequest, res: Response) => {
   try {
     const { rows: userCount } = await pool.query('SELECT COUNT(*) as count FROM users');
     const { rows: fileCount } = await pool.query('SELECT COUNT(*) as count FROM files WHERE is_deleted = false');

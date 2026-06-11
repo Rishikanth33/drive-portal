@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { pool } from '../db';
 
-export const getFolders = async (req: Request & AuthRequest, res: Response) => {
+export const getFolders = async (req: AuthRequest, res: Response) => {
   const isAdmin = req.user!.role === 'admin';
   try {
     const result = isAdmin
@@ -12,7 +12,7 @@ export const getFolders = async (req: Request & AuthRequest, res: Response) => {
   } catch { res.status(500).json({ error: 'Failed to fetch folders' }); }
 };
 
-export const createFolder = async (req: Request & AuthRequest, res: Response) => {
+export const createFolder = async (req: AuthRequest, res: Response) => {
   const { name, parent_id } = req.body;
   if (!name) return res.status(400).json({ error: 'Folder name required' });
   try {
@@ -24,7 +24,7 @@ export const createFolder = async (req: Request & AuthRequest, res: Response) =>
   } catch { res.status(500).json({ error: 'Failed to create folder' }); }
 };
 
-export const renameFolder = async (req: Request & AuthRequest, res: Response) => {
+export const renameFolder = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { name } = req.body;
   try {
@@ -37,7 +37,7 @@ export const renameFolder = async (req: Request & AuthRequest, res: Response) =>
   } catch { res.status(500).json({ error: 'Rename failed' }); }
 };
 
-export const deleteFolder = async (req: Request & AuthRequest, res: Response) => {
+export const deleteFolder = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   try {
     const folder = await pool.query('SELECT * FROM folders WHERE id=$1', [id]);
