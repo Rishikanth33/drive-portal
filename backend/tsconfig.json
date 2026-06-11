@@ -6,6 +6,9 @@
     "outDir": "./dist",
 
     "strict": false,
+    "noImplicitAny": false,
+    "strictPropertyInitialization": false,
+    "noEmitOnError": false,
 
     "esModuleInterop": true,
     "skipLibCheck": true,
