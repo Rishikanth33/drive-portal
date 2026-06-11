@@ -51,23 +51,37 @@ export default function Dashboard() {
   const [autoSort,      setAutoSort]      = useState(false);
   const [toast,         setToast]         = useState<string | null>(null);
 
-  useEffect(() => {
-    const s = localStorage.getItem('user');
-    if (!s) { router.push('/login'); return; }
-    setUser(JSON.parse(s));
-    const savedView = localStorage.getItem('viewMode') as ViewMode;
-    if (savedView) setViewMode(savedView);
-  }, [router]);
-
   const toggleStar = async (fileId: string) => {
     try {
       const res = await api.patch(`/files/${fileId}/star`);
-      setToast(res.data.is_starred ? 'Starred' : 'Unstarred');
+
+      setToast(
+        res.data.is_starred
+          ? 'Starred'
+          : 'Unstarred'
+      );
+
       load();
     } catch {
       setToast('Failed to update star');
     }
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+
+    if (!token || !userData) {
+      router.push('/login');
+      return;
+    }
+
+    setUser(JSON.parse(userData));
+
+    const savedView = localStorage.getItem('viewMode') as ViewMode;
+    if (savedView) setViewMode(savedView);
+
+  }, [router]);
 
   const softDelete = async (fileId: string) => {
     if (!confirm('Move this file to Trash?')) return;
@@ -300,7 +314,6 @@ export default function Dashboard() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                   <UploadZone folderId={currentFolder} onUploadDone={load}/>
 
-                  {/* FIX #3: removed duplicate › separator */}
                   <nav style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, background: S.surface, border: `1px solid ${S.border}`, borderRadius: 9, padding: '7px 13px', marginBottom: 20, fontSize: 13 }}>
                     {crumbs.map((c, i) => (
                       <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -315,7 +328,6 @@ export default function Dashboard() {
                     ))}
                   </nav>
 
-                  {/* FIX #4: added fileCounts prop */}
                   <FolderPanel
                     folders={folders}
                     onFolderClick={openFolder}
@@ -404,7 +416,18 @@ export default function Dashboard() {
                     <span>Name</span><span>Type</span><span>Size</span><span>Date</span>
                   </div>
                   {displayFiles.map((f, i) => (
-                    <ListRow key={f.id} file={f} index={i} onRefresh={load} currentUserId={user?.id ?? ''} isAdmin={user?.role === 'admin'} onToggleStar={toggleStar} onDelete={softDelete} onRestore={restoreFile} isTrashView={false} />
+                    <ListRow
+                      key={f.id}
+                      file={f}
+                      index={i}
+                      onRefresh={load}
+                      currentUserId={user?.id ?? ''}
+                      isAdmin={user?.role === 'admin'}
+                      onToggleStar={toggleStar}
+                      onDelete={softDelete}
+                      onRestore={restoreFile}
+                      isTrashView={false}
+                    />
                   ))}
                 </div>
               )}
