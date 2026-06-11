@@ -8,20 +8,16 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const authMiddleware = (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
-        if (!authHeader) {
-            return res.status(401).json({
-                error: 'No token provided',
-            });
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'No token provided' });
         }
         const token = authHeader.split(' ')[1];
         const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
         next();
     }
-    catch (error) {
-        return res.status(401).json({
-            error: 'Invalid token',
-        });
+    catch (err) {
+        return res.status(401).json({ error: 'Invalid token' });
     }
 };
 exports.authMiddleware = authMiddleware;
