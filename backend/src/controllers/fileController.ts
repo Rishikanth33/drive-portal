@@ -8,7 +8,7 @@ export const uploadFiles = async (
   req: AuthRequest,
   res: Response
 ) => {
-  const files = req.files as Express.Multer.File[];
+const files = req.files as any[];
   const { folder_id } = req.body;
   if (!files || files.length === 0) return res.status(400).json({ error: 'No files uploaded' });
   try {
