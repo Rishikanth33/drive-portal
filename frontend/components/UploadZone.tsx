@@ -31,13 +31,21 @@ export default function UploadZone({ folderId, onUploadDone }:Props) {
       fd.append('files', files[i]);
       if (folderId) fd.append('folder_id', folderId);
       try {
+        const token = localStorage.getItem('token');
+
         await api.post('/files/upload', fd, {
-          headers:{'Content-Type':'multipart/form-data'},
-          onUploadProgress: e => upd(i,{progress:Math.round((e.loaded*100)/(e.total??1))}),
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+          onUploadProgress: e =>
+            upd(i, {
+              progress: Math.round((e.loaded * 100) / (e.total ?? 1)),
+            }),
         });
         
-// ... inside run(), after upd(i,{status:'done',...}):
-logActivity('⬆️', `Uploaded "${files[i].name}"`);
+        upd(i,{status:'done',progress:100});
+        logActivity('⬆️', `Uploaded "${files[i].name}"`);
         
       } catch(e:any) {
         upd(i,{status:'error',message:e.response?.data?.error??'Upload failed'});
