@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-page:      #f8fafc;
+  --bg-surface:   #ffffff;
+  --bg-subtle:    #f1f5f9;
+  --bg-hover:     #f8fafc;
+  --border:       #f1f5f9;
+  --border-mid:   #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary:#475569;
+  --text-muted:   #94a3b8;
+  --blue:         #2563eb;
+  --blue-light:   #eff6ff;
+  --blue-mid:     #dbeafe;
+  --shadow-sm:    0 1px 3px rgba(15,23,42,0.05);
+  --shadow-md:    0 6px 20px rgba(15,23,42,0.08);
+  --shadow-lg:    0 12px 32px rgba(37,99,235,0.12);
+}
+
+[data-theme='dark'] {
+  --bg-page:      #0f172a;
+  --bg-surface:   #1e293b;
+  --bg-subtle:    #1e293b;
+  --bg-hover:     #273449;
+  --border:       #1e293b;
+  --border-mid:   #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary:#94a3b8;
+  --text-muted:   #475569;
+  --blue:         #3b82f6;
+  --blue-light:   #1e3a5f;
+  --blue-mid:     #1e3a5f;
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md:    0 6px 20px rgba(0,0,0,0.3);
+  --shadow-lg:    0 12px 32px rgba(0,0,0,0.4);
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 99px; }
+
+.anim-fadeup {
+  animation: fadeUp 0.28s ease both;
+}
+
+.anim-scalein {
+  animation: scaleIn 0.22s ease both;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--bg-hover) 50%, var(--bg-subtle) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 6px;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
