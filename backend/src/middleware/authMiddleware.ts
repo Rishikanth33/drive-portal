@@ -7,20 +7,20 @@ export interface AuthRequest extends Request {
     email: string;
     role: string;
   };
-  files?: any;
 }
 
 export const authMiddleware = (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-): void => {
+) => {
   try {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'No token provided' });
-      return;
+      return res.status(401).json({
+        error: 'Access denied',
+      });
     }
 
     const token = authHeader.split(' ')[1];
@@ -28,16 +28,14 @@ export const authMiddleware = (
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET as string
-    ) as {
-      id: string;
-      email: string;
-      role: string;
-    };
+    ) as AuthRequest['user'];
 
     req.user = decoded;
 
     next();
   } catch (err) {
-    res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({
+      error: 'Invalid token',
+    });
   }
 };

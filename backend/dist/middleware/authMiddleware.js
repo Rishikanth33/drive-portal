@@ -9,8 +9,9 @@ const authMiddleware = (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            res.status(401).json({ error: 'No token provided' });
-            return;
+            return res.status(401).json({
+                error: 'Access denied',
+            });
         }
         const token = authHeader.split(' ')[1];
         const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
@@ -18,7 +19,9 @@ const authMiddleware = (req, res, next) => {
         next();
     }
     catch (err) {
-        res.status(401).json({ error: 'Invalid token' });
+        return res.status(401).json({
+            error: 'Invalid token',
+        });
     }
 };
 exports.authMiddleware = authMiddleware;
