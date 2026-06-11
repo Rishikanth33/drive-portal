@@ -1,7 +1,7 @@
 // backend/src/routes/adminRoutes.ts
 import { Router, Response } from 'express';
-import { auth, AuthRequest } from '../middleware/authMiddleware'; //  FIXED IMPORT PATH
-import db from '../db';
+import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';//  FIXED IMPORT PATH
+import { pool } from '../db';
 
 const router = Router();
 
@@ -13,14 +13,14 @@ function adminOnly(req: AuthRequest, res: Response, next: Function) {
   next();
 }
 
-router.use(auth, adminOnly);
+router.use(authMiddleware, adminOnly);
 
 // ... The rest of your route handlers stay exactly the same
 
 // ─── 1. GET ALL USERS WITH STATS ─────────────────────
 router.get('/users', async (req: AuthRequest, res: Response) => {
   try {
-    const { rows: users } = await db.query(
+    const { rows: users } = await pool.query(
       `SELECT u.id, u.name, u.email, u.role, u.created_at,
               COUNT(f.id) as total_files,
               COALESCE(SUM(CAST(f.file_size AS BIGINT)), 0) as total_storage
@@ -39,10 +39,10 @@ router.get('/users', async (req: AuthRequest, res: Response) => {
 // ─── 2. GET SPECIFIC USER'S FILES ────────────────────
 router.get('/users/:id/files', async (req: AuthRequest, res: Response) => {
   try {
-    const { rows: userRows } = await db.query('SELECT id, name, email FROM users WHERE id = $1', [req.params.id]);
+    const { rows: userRows } = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [req.params.id]);
     if (userRows.length === 0) return res.status(404).json({ error: 'User not found' });
 
-    const { rows: files } = await db.query(
+    const { rows: files } = await pool.query(
       'SELECT * FROM files WHERE owner_id = $1 AND is_deleted = false ORDER BY uploaded_at DESC',
       [req.params.id]
     );
@@ -57,10 +57,10 @@ router.get('/users/:id/files', async (req: AuthRequest, res: Response) => {
 // ─── 3. GET SPECIFIC USER'S FOLDERS ──────────────────
 router.get('/users/:id/folders', async (req: AuthRequest, res: Response) => {
   try {
-    const { rows: userRows } = await db.query('SELECT id, name, email FROM users WHERE id = $1', [req.params.id]);
+    const { rows: userRows } = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [req.params.id]);
     if (userRows.length === 0) return res.status(404).json({ error: 'User not found' });
 
-    const { rows: folders } = await db.query(
+    const { rows: folders } = await pool.query(
       'SELECT * FROM folders WHERE owner_id = $1 ORDER BY name ASC',
       [req.params.id]
     );
@@ -85,7 +85,7 @@ router.patch('/users/:id/role', async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'You cannot change your own role' });
     }
 
-    const { rows } = await db.query('UPDATE users SET role = $1 WHERE id = $2 RETURNING id, name, email, role', [role, req.params.id]);
+    const { rows } = await pool.query('UPDATE users SET role = $1 WHERE id = $2 RETURNING id, name, email, role', [role, req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
 
     return res.json({ message: 'Role updated', user: rows[0] });
@@ -113,7 +113,7 @@ router.patch('/users/:id', async (req: AuthRequest, res: Response) => {
     params.push(req.params.id);
     const sql = `UPDATE users SET ${updates.join(', ')} WHERE id = $${i} RETURNING id, name, email, role`;
 
-    const { rows } = await db.query(sql, params);
+    const { rows } = await pool.query(sql, params);
     if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
 
     return res.json({ message: 'User updated', user: rows[0] });
@@ -130,11 +130,11 @@ router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'You cannot delete your own account' });
     }
 
-    const { rows } = await db.query('SELECT id FROM users WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
 
     // Delete user's files from disk
-    const { rows: fileRows } = await db.query('SELECT stored_name FROM files WHERE owner_id = $1', [req.params.id]);
+    const { rows: fileRows } = await pool.query('SELECT stored_name FROM files WHERE owner_id = $1', [req.params.id]);
     const fs = require('fs');
     const path = require('path');
     for (const f of fileRows) {
@@ -145,9 +145,9 @@ router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
     }
 
     // Delete user's files, folders, then user (cascade would handle this too)
-    await db.query('DELETE FROM files WHERE owner_id = $1', [req.params.id]);
-    await db.query('DELETE FROM folders WHERE owner_id = $1', [req.params.id]);
-    await db.query('DELETE FROM users WHERE id = $1', [req.params.id]);
+    await pool.query('DELETE FROM files WHERE owner_id = $1', [req.params.id]);
+    await pool.query('DELETE FROM folders WHERE owner_id = $1', [req.params.id]);
+    await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
 
     return res.json({ message: 'User deleted permanently' });
   } catch (err) {
@@ -159,11 +159,11 @@ router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
 // ─── 7. ADMIN DASHBOARD STATS ────────────────────────
 router.get('/stats', async (req: AuthRequest, res: Response) => {
   try {
-    const { rows: userCount } = await db.query('SELECT COUNT(*) as count FROM users');
-    const { rows: fileCount } = await db.query('SELECT COUNT(*) as count FROM files WHERE is_deleted = false');
-    const { rows: folderCount } = await db.query('SELECT COUNT(*) as count FROM folders');
-    const { rows: storage } = await db.query('SELECT COALESCE(SUM(CAST(file_size AS BIGINT)), 0) as total FROM files WHERE is_deleted = false');
-    const { rows: trashCount } = await db.query('SELECT COUNT(*) as count FROM files WHERE is_deleted = true');
+    const { rows: userCount } = await pool.query('SELECT COUNT(*) as count FROM users');
+    const { rows: fileCount } = await pool.query('SELECT COUNT(*) as count FROM files WHERE is_deleted = false');
+    const { rows: folderCount } = await pool.query('SELECT COUNT(*) as count FROM folders');
+    const { rows: storage } = await pool.query('SELECT COALESCE(SUM(CAST(file_size AS BIGINT)), 0) as total FROM files WHERE is_deleted = false');
+    const { rows: trashCount } = await pool.query('SELECT COUNT(*) as count FROM files WHERE is_deleted = true');
 
     return res.json({
       users: Number(userCount[0].count),

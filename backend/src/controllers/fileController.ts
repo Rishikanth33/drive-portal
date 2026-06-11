@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
-import pool from '../db';
+import { pool } from '../db';
 import fs from 'fs';
 import path from 'path';
 

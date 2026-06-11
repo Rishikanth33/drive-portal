@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
-import pool from '../db';
+import { pool } from '../db';
 
 export const getFolders = async (req: AuthRequest, res: Response) => {
   const isAdmin = req.user!.role === 'admin';
