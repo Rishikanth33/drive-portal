@@ -48,7 +48,7 @@ async function checkOwner(req: ReqWithFile, res: Response, next: NextFunction) {
 }
 
 // ─── GET /FILES ────────────────────────────────────────
-router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/', authMiddleware, async (req: Request & AuthRequest, res: Response) => {
   try {
     const { sort, search, folder_id, starred, trashed } = req.query;
     
@@ -165,7 +165,7 @@ router.patch('/:id/star', authMiddleware, checkOwner, async (req: ReqWithFile, r
 });
 
 // ─── SOFT DELETE (Move To Trash) ───────────────────────
-router.delete('/:id', authMiddleware, checkOwner, async (req: ReqWithFile, res: Response) => {
+router.delete('/:id', authMiddleware, checkOwner, async (req: Request & AuthRequest, res: Response) => {
   try {
     const fileId = req.params.id;
     await pool.query(
@@ -180,7 +180,7 @@ router.delete('/:id', authMiddleware, checkOwner, async (req: ReqWithFile, res: 
 });
 
 // ─── RESTORE FROM TRASH ────────────────────────────────
-router.patch('/:id/restore', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.patch('/:id/restore', authMiddleware, async (req: Request & AuthRequest, res: Response) => {
   try {
     const fileId = req.params.id;
     
@@ -214,7 +214,7 @@ router.patch('/:id/restore', authMiddleware, async (req: AuthRequest, res: Respo
 });
 
 // ─── PERMANENT DELETION ──────────────────────────────────
-router.delete('/:id/permanent', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.delete('/:id/permanent', authMiddleware, async (req: Request & AuthRequest, res: Response) => {
   try {
     const fileId = req.params.id;
 
@@ -256,7 +256,7 @@ router.delete('/:id/permanent', authMiddleware, async (req: AuthRequest, res: Re
 });
 
 // ─── DOWNLOAD ──────────────────────────────────────────
-router.get('/:id/download', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/:id/download', authMiddleware, async (req: Request & AuthRequest, res: Response) => {
   try {
     const fileId = req.params.id;
 
