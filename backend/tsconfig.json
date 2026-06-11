@@ -19,6 +19,9 @@
     "forceConsistentCasingInFileNames": true,
 
     "types": ["node"],
+    "typeRoots": ["./node_modules/@types"],
+
+    "lib": ["ES2020"],
 
     "resolveJsonModule": true,
 
