@@ -1,10 +1,17 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { pool } from '../db';
 import fs from 'fs';
 import path from 'path';
 
-export const uploadFiles = async (req: AuthRequest, res: Response) => {
+interface MulterRequest extends Request {
+  files?: Express.Multer.File[];
+}
+
+export const uploadFiles = async (
+  req: MulterRequest & AuthRequest,
+  res: Response
+) => {
   const files = req.files as Express.Multer.File[];
   const { folder_id } = req.body;
   if (!files || files.length === 0) return res.status(400).json({ error: 'No files uploaded' });
@@ -25,7 +32,10 @@ export const uploadFiles = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getFiles = async (req: AuthRequest, res: Response) => {
+export const getFiles = async (
+  req: Request & AuthRequest,
+  res: Response
+) => {
   const { folder_id, search, sort } = req.query;
   const isAdmin = req.user!.role === 'admin';
   let query = 'SELECT * FROM files WHERE 1=1';
@@ -43,7 +53,10 @@ export const getFiles = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const renameFile = async (req: AuthRequest, res: Response) => {
+export const renameFile = async (
+  req: Request & AuthRequest,
+  res: Response
+) => {
   const { id } = req.params;
   const { name } = req.body;
   try {
@@ -58,7 +71,10 @@ export const renameFile = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const deleteFile = async (req: AuthRequest, res: Response) => {
+export const deleteFile = async (
+  req: Request & AuthRequest,
+  res: Response
+) => {
   const { id } = req.params;
   try {
     const file = await pool.query('SELECT * FROM files WHERE id=$1', [id]);
@@ -73,7 +89,10 @@ export const deleteFile = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const downloadFile = async (req: AuthRequest, res: Response) => {
+export const downloadFile = async (
+  req: Request & AuthRequest,
+  res: Response
+) => {
   const { id } = req.params;
   try {
     const file = await pool.query('SELECT * FROM files WHERE id=$1', [id]);
@@ -86,7 +105,10 @@ export const downloadFile = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const moveFile = async (req: AuthRequest, res: Response) => {
+export const moveFile = async (
+  req: Request & AuthRequest,
+  res: Response
+) => {
   const { id } = req.params;
   const { folder_id } = req.body;
   try {
