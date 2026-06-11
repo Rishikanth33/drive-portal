@@ -1,11 +1,11 @@
 import { Router, Response } from 'express';
-import { auth, AuthRequest } from '../middleware/authMiddleware';
-import db from '../db';
+import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
+import { pool } from '../db';
 
 const router = Router();
 
 // ─── 1. GET ALL FOLDERS ───────────────────────────────
-router.get('/', auth, async (req: AuthRequest, res: Response) => {
+router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const isAdmin = req.user!.role === 'admin';
     let sql = 'SELECT * FROM folders WHERE 1=1';
@@ -18,7 +18,7 @@ router.get('/', auth, async (req: AuthRequest, res: Response) => {
 
     sql += ' ORDER BY name ASC';
 
-    const { rows } = await db.query(sql, params);
+    const { rows } = await pool.query(sql, params);
     return res.json(rows);
   } catch (err) {
     console.error('GET folders error:', err);
@@ -27,12 +27,12 @@ router.get('/', auth, async (req: AuthRequest, res: Response) => {
 });
 
 // ─── 2. CREATE FOLDER ────────────────────────────────
-router.post('/', auth, async (req: AuthRequest, res: Response) => {
+router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { name, parent_id } = req.body;
     if (!name) return res.status(400).json({ error: 'Folder name is required' });
 
-    const { rows } = await db.query(
+    const { rows } = await pool.query(
       'INSERT INTO folders (name, parent_id, owner_id) VALUES ($1, $2, $3) RETURNING id',
       [name, parent_id || null, req.user!.id]
     );
@@ -45,12 +45,12 @@ router.post('/', auth, async (req: AuthRequest, res: Response) => {
 });
 
 // ─── 3. RENAME FOLDER ────────────────────────────────
-router.patch('/:id', auth, async (req: AuthRequest, res: Response) => {
+router.patch('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { name } = req.body;
     if (!name) return res.status(400).json({ error: 'Name is required' });
 
-    const { rows } = await db.query(
+    const { rows } = await pool   .query(
       'SELECT owner_id FROM folders WHERE id = $1',
       [req.params.id]
     );
@@ -61,7 +61,7 @@ router.patch('/:id', auth, async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Not your folder' });
     }
 
-    await db.query('UPDATE folders SET name = $1 WHERE id = $2', [name, req.params.id]);
+    await pool.query('UPDATE folders SET name = $1 WHERE id = $2', [name, req.params.id]);
     return res.json({ message: 'Renamed' });
   } catch (err) {
     console.error('RENAME folder error:', err);
@@ -70,9 +70,9 @@ router.patch('/:id', auth, async (req: AuthRequest, res: Response) => {
 });
 
 // ─── 4. DELETE FOLDER ────────────────────────────────
-router.delete('/:id', auth, async (req: AuthRequest, res: Response) => {
+router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { rows } = await db.query(
+    const { rows } = await pool.query(
       'SELECT owner_id FROM folders WHERE id = $1',
       [req.params.id]
     );
@@ -83,7 +83,7 @@ router.delete('/:id', auth, async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Not your folder' });
     }
 
-    await db.query('DELETE FROM folders WHERE id = $1', [req.params.id]);
+    await pool.query('DELETE FROM folders WHERE id = $1', [req.params.id]);
     return res.json({ message: 'Deleted' });
   } catch (err) {
     console.error('DELETE folder error:', err);

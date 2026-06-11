@@ -1,29 +1,30 @@
 import { Router, Response, NextFunction } from 'express';
-import { auth, AuthRequest } from '../middleware/authMiddleware';
-import db from '../db';
+import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
+import { pool } from '../db';
 import fs from 'fs';
 import path from 'path';
 
 const router = Router();
 
-interface FileRow {
-  owner_id: string;
-  is_deleted: boolean;
-  stored_name: string;
-  is_starred: boolean;
-}
-
+// Extended custom interface specifically for handling operations requiring file checks
 interface ReqWithFile extends AuthRequest {
-  fileRow?: FileRow;
-  files?: any;
+  fileRow?: {
+    owner_id: string;
+    is_deleted: boolean;
+    stored_name: string;
+    is_starred: boolean;
+  };
+  files?: any; // Satisfies file parser libraries like express-fileupload
 }
 
 // ─── HELPER: CHECK OWNERSHIP MIDDLEWARE ───────────────────────────
 async function checkOwner(req: ReqWithFile, res: Response, next: NextFunction) {
   try {
-    const { rows } = await db.query(
+    const fileId = req.params.id;
+
+    const { rows } = await pool.query(
       'SELECT owner_id, is_deleted, stored_name, is_starred FROM files WHERE id = $1',
-      [req.params.id]
+      [fileId]
     );
 
     if (!rows || rows.length === 0) {
@@ -32,9 +33,10 @@ async function checkOwner(req: ReqWithFile, res: Response, next: NextFunction) {
 
     req.fileRow = rows[0];
 
-    if (req.user!.role === 'admin') return next();
+    // Safely parse user profile metrics
+    if (req.user && req.user.role === 'admin') return next();
 
-    if (rows[0].owner_id !== req.user!.id) {
+    if (!req.user || rows[0].owner_id !== req.user.id) {
       return res.status(403).json({ error: 'You can only modify your own files' });
     }
 
@@ -46,11 +48,16 @@ async function checkOwner(req: ReqWithFile, res: Response, next: NextFunction) {
 }
 
 // ─── GET /FILES ────────────────────────────────────────
-router.get('/', auth, async (req: AuthRequest, res: Response) => {
+router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { sort, search, folder_id, starred, trashed } = req.query;
-    const userId = req.user!.id;
-    const isAdmin = req.user!.role === 'admin';
+    
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized user payload context' });
+    }
+
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
 
     let sql = 'SELECT * FROM files WHERE 1=1';
     const params: any[] = [];
@@ -91,7 +98,7 @@ router.get('/', auth, async (req: AuthRequest, res: Response) => {
       sql += ' ORDER BY uploaded_at DESC';
     }
 
-    const { rows } = await db.query(sql, params);
+    const { rows } = await pool.query(sql, params);
     return res.json(rows);
   } catch (err) {
     console.error('GET /files error:', err);
@@ -100,21 +107,25 @@ router.get('/', auth, async (req: AuthRequest, res: Response) => {
 });
 
 // ─── UPLOAD FILE ────────────────────────────────────────────
-router.post('/upload', auth, async (req: ReqWithFile, res: Response) => {
+router.post('/upload', authMiddleware, async (req: ReqWithFile, res: Response) => {
   try {
     if (!req.files || !req.files.file) {
       return res.status(400).json({ error: 'No file provided' });
     }
 
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication signature context missing' });
+    }
+
     const file = req.files.file;
-    const folder_id = req.body.folder_id || null;
+    const folder_id = (req.body as any).folder_id || null;
     const ext = file.name.split('.').pop().toLowerCase();
     const storedName = `${Date.now()}-${file.name}`;
 
-    const { rows } = await db.query(
+    const { rows } = await pool.query(
       `INSERT INTO files (original_name, stored_name, file_type, file_size, folder_id, owner_id, is_starred, is_deleted, uploaded_at)
        VALUES ($1, $2, $3, $4, $5, $6, false, false, NOW()) RETURNING id`,
-      [file.name, storedName, ext, file.size, folder_id, req.user!.id]
+      [file.name, storedName, ext, file.size, folder_id, req.user.id]
     );
 
     const uploadDir = path.join(__dirname, '../uploads');
@@ -136,13 +147,14 @@ router.post('/upload', auth, async (req: ReqWithFile, res: Response) => {
 });
 
 // ─── TOGGLE STAR STATUS ───────────────────────────────────────
-router.patch('/:id/star', auth, checkOwner, async (req: ReqWithFile, res: Response) => {
+router.patch('/:id/star', authMiddleware, checkOwner, async (req: ReqWithFile, res: Response) => {
   try {
+    const fileId = req.params.id;
     const newStar = !req.fileRow!.is_starred;
 
-    await db.query(
+    await pool.query(
       'UPDATE files SET is_starred = $1 WHERE id = $2',
-      [newStar, req.params.id]
+      [newStar, fileId]
     );
 
     return res.json({ is_starred: newStar });
@@ -153,11 +165,12 @@ router.patch('/:id/star', auth, checkOwner, async (req: ReqWithFile, res: Respon
 });
 
 // ─── SOFT DELETE (Move To Trash) ───────────────────────
-router.delete('/:id', auth, checkOwner, async (req: ReqWithFile, res: Response) => {
+router.delete('/:id', authMiddleware, checkOwner, async (req: ReqWithFile, res: Response) => {
   try {
-    await db.query(
+    const fileId = req.params.id;
+    await pool.query(
       'UPDATE files SET is_deleted = true, deleted_at = NOW() WHERE id = $1',
-      [req.params.id]
+      [fileId]
     );
     return res.json({ message: 'Moved to trash' });
   } catch (err) {
@@ -167,24 +180,30 @@ router.delete('/:id', auth, checkOwner, async (req: ReqWithFile, res: Response) 
 });
 
 // ─── RESTORE FROM TRASH ────────────────────────────────
-router.patch('/:id/restore', auth, async (req: AuthRequest, res: Response) => {
+router.patch('/:id/restore', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { rows } = await db.query(
+    const fileId = req.params.id;
+    
+    if (!req.user) {
+      return res.status(401).json({ error: 'Missing session signature context' });
+    }
+
+    const { rows } = await pool.query(
       'SELECT owner_id FROM files WHERE id = $1 AND is_deleted = true',
-      [req.params.id]
+      [fileId]
     );
 
     if (!rows || rows.length === 0) {
       return res.status(404).json({ error: 'File not found in trash' });
     }
 
-    if (req.user!.role !== 'admin' && rows[0].owner_id !== req.user!.id) {
+    if (req.user.role !== 'admin' && rows[0].owner_id !== req.user.id) {
       return res.status(403).json({ error: 'Not your file' });
     }
 
-    await db.query(
+    await pool.query(
       'UPDATE files SET is_deleted = false, deleted_at = NULL WHERE id = $1',
-      [req.params.id]
+      [fileId]
     );
 
     return res.json({ message: 'File restored' });
@@ -195,28 +214,38 @@ router.patch('/:id/restore', auth, async (req: AuthRequest, res: Response) => {
 });
 
 // ─── PERMANENT DELETION ──────────────────────────────────
-router.delete('/:id/permanent', auth, async (req: AuthRequest, res: Response) => {
+router.delete('/:id/permanent', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { rows } = await db.query(
+    const fileId = req.params.id;
+
+    if (!req.user) {
+      return res.status(401).json({ error: 'User mapping sequence failed' });
+    }
+
+    const { rows } = await pool.query(
       'SELECT owner_id, stored_name FROM files WHERE id = $1 AND is_deleted = true',
-      [req.params.id]
+      [fileId]
     );
 
     if (!rows || rows.length === 0) {
       return res.status(404).json({ error: 'File not found in trash' });
     }
 
-    if (req.user!.role !== 'admin' && rows[0].owner_id !== req.user!.id) {
+    if (req.user.role !== 'admin' && rows[0].owner_id !== req.user.id) {
       return res.status(403).json({ error: 'Not your file' });
     }
 
     const storedName = rows[0].stored_name;
 
-    await db.query('DELETE FROM files WHERE id = $1', [req.params.id]);
+    await pool.query('DELETE FROM files WHERE id = $1', [fileId]);
 
     const filePath = path.join(__dirname, '../uploads', storedName);
     if (fs.existsSync(filePath)) {
-      try { fs.unlinkSync(filePath); } catch (e) { /* ignore */ }
+      try { 
+        fs.unlinkSync(filePath); 
+      } catch (e) {
+        console.warn('Physical cleanup trace unlinked or dropped:', e);
+      }
     }
 
     return res.json({ message: 'Permanently deleted' });
@@ -227,18 +256,24 @@ router.delete('/:id/permanent', auth, async (req: AuthRequest, res: Response) =>
 });
 
 // ─── DOWNLOAD ──────────────────────────────────────────
-router.get('/:id/download', auth, async (req: AuthRequest, res: Response) => {
+router.get('/:id/download', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { rows } = await db.query(
+    const fileId = req.params.id;
+
+    if (!req.user) {
+      return res.status(401).json({ error: 'User reference trace contextual breakdown' });
+    }
+
+    const { rows } = await pool.query(
       'SELECT stored_name, original_name, owner_id FROM files WHERE id = $1 AND is_deleted = false',
-      [req.params.id]
+      [fileId]
     );
 
     if (!rows || rows.length === 0) {
       return res.status(404).json({ error: 'File not found' });
     }
 
-    if (req.user!.role !== 'admin' && rows[0].owner_id !== req.user!.id) {
+    if (req.user.role !== 'admin' && rows[0].owner_id !== req.user.id) {
       return res.status(403).json({ error: 'Not your file' });
     }
 
