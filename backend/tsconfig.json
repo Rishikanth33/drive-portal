@@ -12,11 +12,7 @@
 "ignoreDeprecations": "6.0",
     "moduleResolution": "node",
 
-    "types": [
-      "node",
-      "express",
-      "multer"
-    ],
+   "types": ["node"],
 
     "typeRoots": [
       "./node_modules/@types"
