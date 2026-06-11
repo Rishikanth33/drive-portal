@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fileUpload from 'express-fileupload';
 
 import authRoutes from './routes/authRoutes';
 import fileRoutes from './routes/fileRoutes';
@@ -14,25 +15,44 @@ dotenv.config();
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
 
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use(express.json({
+  limit: '10mb',
+}));
 
+app.use(express.urlencoded({
+  extended: true,
+}));
+
+// ✅ FILE UPLOAD MIDDLEWARE
+app.use(fileUpload({
+  createParentPath: true,
+}));
+
+// ✅ STATIC UPLOADS
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, '../uploads'))
+);
+
+// ✅ ROUTES
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/folders', folderRoutes);
 
+// ✅ TEST PROTECTED ROUTE
 app.get('/api/protected', authMiddleware, (req, res) => {
   res.json({
     message: 'Protected route accessed successfully',
   });
 });
-app.get("/", (req, res) => {
+
+// ✅ ROOT ROUTE
+app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: "Drive Portal API Running 🚀",
+    message: 'Drive Portal API Running 🚀',
   });
 });
 
